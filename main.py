@@ -3,6 +3,7 @@ from datetime import datetime
 import pytz
 from flask import Flask, request, jsonify
 from google.cloud import bigquery
+import functions_framework
 
 app = Flask(__name__)
 
@@ -45,6 +46,7 @@ def log_operation():
     return jsonify({"status": "success"}), 200
 
 # For Cloud Functions (Gen 2) entry point
+@functions_framework.http
 def main(request):
     with app.app_context():
         return app.full_dispatch_request()
