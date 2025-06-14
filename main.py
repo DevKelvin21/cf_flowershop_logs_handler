@@ -12,18 +12,30 @@ BQ_PROJECT = os.getenv("BQ_PROJECT", "your_project_id")
 BQ_DATASET = os.getenv("BQ_DATASET", "your_dataset_id")
 BQ_TABLE = os.getenv("BQ_TABLE", "your_table_name")
 
-@app.route("/log_operation", methods=["POST"])
+@app.route("/log_operation", methods=["POST", "OPTIONS"])
 def log_operation():
+    # Handle CORS preflight
+    if request.method == "OPTIONS":
+        response = jsonify({"status": "ok"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        return response, 204
+
     data = request.get_json()
     if not data:
-        return jsonify({"error": "Missing JSON payload"}), 400
+        response = jsonify({"error": "Missing JSON payload"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 400
 
     operation_type = data.get("operation_type")
     user_name = data.get("user_name")
     message = data.get("message")
 
     if not all([operation_type, user_name, message]):
-        return jsonify({"error": "Missing required fields"}), 400
+        response = jsonify({"error": "Missing required fields"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 400
 
     tz = pytz.timezone("America/El_Salvador")
     timestamp = datetime.now(tz).isoformat()
@@ -42,12 +54,19 @@ def log_operation():
     table_ref = f"{BQ_PROJECT}.{BQ_DATASET}.{BQ_TABLE}"
     errors = client.insert_rows_json(table_ref, [row])
     if errors:
-        return jsonify({"error": str(errors)}), 500
-    return jsonify({"status": "success"}), 200
+        response = jsonify({"error": str(errors)})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 500
+    response = jsonify({"status": "success"})
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response, 200
 
 # For Cloud Functions (Gen 2) entry point
 @functions_framework.http
 def main(request):
     if request.path == "/log_operation":
         return log_operation()
-    return ("Not Found", 404)
+    response = ("Not Found", 404)
+    if hasattr(response, 'headers'):
+        response.headers.add("Access-Control-Allow-Origin", "*")
+    return response
