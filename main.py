@@ -48,5 +48,6 @@ def log_operation():
 # For Cloud Functions (Gen 2) entry point
 @functions_framework.http
 def main(request):
-    with app.app_context():
-        return app.full_dispatch_request()
+    if request.path == "/log_operation":
+        return log_operation()
+    return ("Not Found", 404)
